@@ -6,25 +6,19 @@ const { authMiddleware } = require('../middlewares/authMiddleware.js');
 
 // Public routes
 router.get('/', blogController.getAllBlogs);
-router.get("/latest", blogController.getLatestArticles); 
-router.get("/top-viewed", blogController.getTopViewedArticle); 
+router.get("/latest", blogController.getLatestArticles);
+router.get("/top-viewed", blogController.getTopViewedArticle);
 router.get('/top', blogController.getTopArticle);
 router.get('/:id', blogController.getBlog);
 router.get('/:id/comments', blogController.getBlogComments);
-router.post('/:id/like', blogController.likeBlog);
-      
+
 // Protected routes (require authentication)
 router.use(authMiddleware);
 
-// Blog CRUD operations with proper middleware chain
+router.post('/:id/like', blogController.likeBlog);
 router.post('/', blogMiddleware.uploadBlogImage, blogMiddleware.handleUploadErrors, blogMiddleware.validateBlogData, blogController.createBlog);
-
 router.patch('/:id', blogMiddleware.uploadBlogImage, blogMiddleware.handleUploadErrors, blogController.updateBlog);
-
 router.delete('/:id', blogController.deleteBlog);
-
-// Blog interaction routes
-// router.post('/:id/like', blogController.likeBlog);
 
 // Comment routes
 router.post('/:id/comments', blogController.addComment);

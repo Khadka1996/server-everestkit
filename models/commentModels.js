@@ -1,3 +1,4 @@
+// server/models/commentModels.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
@@ -7,6 +8,12 @@ const CommentSchema = new Schema(
       type: String,
       required: [true, "Comment content is required"],
       trim: true
+    },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "Comment must have an author"],
+      index: true
     },
     blog: {
       type: Schema.Types.ObjectId,
@@ -57,7 +64,15 @@ CommentSchema.virtual("replyCount").get(function() {
   return this.replies.length;
 });
 
+CommentSchema.virtual("author", {
+  ref: "User",
+  localField: "user",
+  foreignField: "_id",
+  justOne: true
+});
+
 // Indexes
 CommentSchema.index({ createdAt: -1 });
+CommentSchema.index({ user: 1, blog: 1 });
 
 module.exports = mongoose.model("Comment", CommentSchema);
