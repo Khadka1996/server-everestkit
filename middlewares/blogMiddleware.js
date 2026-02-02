@@ -65,7 +65,7 @@ const validateBlogData = (req, res, next) => {
   if (!title || !content) {
     if (req.file) {
       const fs = require('fs').promises;
-      fs.unlink(path.join(__dirname, './uploads', req.file.filename)).catch((err) =>
+      fs.unlink(path.join(__dirname, '../uploads', req.file.filename)).catch((err) =>
         console.error('Error deleting file:', err)
       );
     }
