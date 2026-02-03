@@ -20,22 +20,22 @@ exports.convertToPdf = async (req, res) => {
 
     const pdfPath = await photoToPdfService.createPdfFromImages(images, gridSize);
 
-    // Read PDF file and send as binary
-    fs.readFile(pdfPath, (readErr, data) => {
-      if (readErr) {
-        logger.error('File read error:', readErr);
-        cleanupFiles(pdfPath, ...images.map(img => img.path));
-        return res.status(500).json({ 
-          success: false,
-          message: 'Failed to read PDF file'
-        });
-      }
-
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Length', data.length);
-      res.send(data);
-      
-      // Cleanup files after sending
+    // Stream PDF file to client and cleanup after sending
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="photos-${Date.now()}.pdf"`);
+    
+    const fileStream = fs.createReadStream(pdfPath);
+    fileStream.pipe(res);
+    
+    // Cleanup files after stream ends
+    fileStream.on('end', () => {
+      cleanupFiles(pdfPath, ...images.map(img => img.path));
+      logger.info('Cleaned up photo to PDF temporary files');
+    });
+    
+    // Handle stream errors
+    fileStream.on('error', (err) => {
+      logger.error('File stream error:', err);
       cleanupFiles(pdfPath, ...images.map(img => img.path));
     });
 

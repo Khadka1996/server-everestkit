@@ -9,7 +9,7 @@ const execPromise = util.promisify(exec);
 
 class PDFService {
   constructor() {
-    this.tempDir = path.join(__dirname, '../../temp/processing');
+    this.tempDir = path.join(__dirname, '../temp/processing');
     this.ensureTempDir();
   }
 
