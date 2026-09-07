@@ -5,7 +5,11 @@
   "scripts": {
     "start": "node Server.js",
     "dev": "nodemon Server.js",
+    "postinstall": "node scripts/postinstall-node-compat.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=20 <24"
   },
   "keywords": [],
   "author": "",

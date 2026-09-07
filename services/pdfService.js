@@ -108,10 +108,14 @@ async mergePDFs(filePaths, outputFilename) {
 }
  // ================== SPLIT PDF IMPLEMENTATION ==================
  async splitPDF({ inputPath, originalname, ranges, splitMode = 'custom', outputType = 'zip' }) {
-  const splitDir = path.join(this.tempDir, 'split');
-  if (!fs.existsSync(splitDir)) {
-    fs.mkdirSync(splitDir, { recursive: true });
-  }
+  // Per-request directory so concurrent split jobs can't overwrite each
+  // other's page files or share the same `<name>_split.zip` output path.
+  const splitDir = path.join(
+    this.tempDir,
+    'split',
+    `job-${Date.now()}-${Math.round(Math.random() * 1e9)}`
+  );
+  fs.mkdirSync(splitDir, { recursive: true });
 
   try {
     // 1. Load PDF and validate
