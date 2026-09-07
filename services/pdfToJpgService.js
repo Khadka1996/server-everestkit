@@ -1,81 +1,84 @@
 const fs = require('fs');
 const path = require('path');
-const { PDFDocument } = require('pdf-lib');
-const sharp = require('sharp');
+const { exec } = require('child_process');
+const util = require('util');
 const AdmZip = require('adm-zip');
 const { cleanupFiles, ensureDirectory, validatePdfFile } = require('../utils/fileUtils');
 
+const execPromise = util.promisify(exec);
+
 class PdfConversionService {
   constructor() {
-    this.tempDir = path.join(__dirname, '../../temp/jpg_output');
+    this.tempDir = path.join(__dirname, '../temp/jpg_output');
     ensureDirectory(this.tempDir);
   }
 
+  /**
+   * Convert a PDF file to JPG image(s) using Poppler's `pdftoppm`.
+   * Returns { path, filename, type } where type is 'single' or 'zip'.
+   */
   async convertPdfToJpg(pdfPath, quality = 90) {
     if (!validatePdfFile(pdfPath)) {
       throw new Error('Invalid PDF file');
     }
 
-    const pdfBytes = await fs.promises.readFile(pdfPath);
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pageCount = pdfDoc.getPageCount();
-    const outputFiles = [];
+    const q = Math.min(100, Math.max(10, parseInt(quality, 10) || 90));
 
-    // Create a temporary directory for this conversion
-    const conversionDir = path.join(this.tempDir, `conv-${Date.now()}`);
+    // Isolated working directory for this conversion
+    const conversionDir = path.join(this.tempDir, `conv-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
     ensureDirectory(conversionDir);
 
+    const outputPrefix = path.join(conversionDir, 'page');
+
     try {
-      // Convert each page to JPG
-      for (let i = 0; i < pageCount; i++) {
-        const page = pdfDoc.getPage(i);
-        const { width, height } = page.getSize();
-        
-        // Render page to image
-        const jpegPath = path.join(conversionDir, `page-${i + 1}.jpg`);
-        const pngBuffer = await page.renderToPng();
-        
-        // Convert to JPG with specified quality
-        await sharp(pngBuffer)
-          .jpeg({ quality: parseInt(quality) })
-          .toFile(jpegPath);
-        
-        outputFiles.push(jpegPath);
+      // -r 150 : 150 DPI render, good balance of quality and size
+      // -jpegopt quality=<q> : JPEG quality
+      const command =
+        `pdftoppm -jpeg -jpegopt quality=${q} -r 150 "${pdfPath}" "${outputPrefix}"`;
+
+      await execPromise(command, { maxBuffer: 1024 * 1024 * 64 });
+
+      const outputFiles = fs
+        .readdirSync(conversionDir)
+        .filter((f) => f.toLowerCase().endsWith('.jpg'))
+        .sort((a, b) => {
+          const na = parseInt(a.replace(/\D/g, ''), 10) || 0;
+          const nb = parseInt(b.replace(/\D/g, ''), 10) || 0;
+          return na - nb;
+        })
+        .map((f) => path.join(conversionDir, f));
+
+      if (outputFiles.length === 0) {
+        throw new Error('Conversion produced no images');
       }
 
-      // Determine output format (single JPG or ZIP)
-      let result;
+      const baseName = path.basename(pdfPath, path.extname(pdfPath));
+
       if (outputFiles.length === 1) {
-        // Single file - return it directly
-        result = {
+        return {
           path: outputFiles[0],
-          filename: path.basename(pdfPath, '.pdf') + '.jpg',
-          type: 'single'
+          filename: `${baseName}.jpg`,
+          type: 'single',
         };
-      } else {
-        // Multiple files - create a ZIP
-        const zip = new AdmZip();
-        outputFiles.forEach(file => {
-          zip.addLocalFile(file);
-        });
-        
-        const zipPath = path.join(conversionDir, 'converted.zip');
-        await zip.writeZipPromise(zipPath);
-        
-        result = {
-          path: zipPath,
-          filename: path.basename(pdfPath, '.pdf') + '-converted.zip',
-          type: 'zip'
-        };
-        
-        // Clean up individual JPGs since they're in the ZIP now
-        cleanupFiles(...outputFiles);
       }
 
-      return result;
-    } catch (error) {
-      // Clean up on error
+      const zip = new AdmZip();
+      outputFiles.forEach((file, i) => {
+        zip.addLocalFile(file, '', `page-${i + 1}.jpg`);
+      });
+      const zipPath = path.join(conversionDir, 'converted.zip');
+      zip.writeZip(zipPath);
       cleanupFiles(...outputFiles);
+
+      return {
+        path: zipPath,
+        filename: `${baseName}-converted.zip`,
+        type: 'zip',
+      };
+    } catch (error) {
+      cleanupFiles(...fs.existsSync(conversionDir)
+        ? fs.readdirSync(conversionDir).map((f) => path.join(conversionDir, f))
+        : []);
       throw error;
     }
   }
@@ -84,8 +87,7 @@ class PdfConversionService {
     try {
       const dirPath = path.dirname(filePath);
       cleanupFiles(filePath);
-      
-      // Remove the directory if it's empty
+
       if (fs.existsSync(dirPath) && fs.readdirSync(dirPath).length === 0) {
         fs.rmdirSync(dirPath);
       }

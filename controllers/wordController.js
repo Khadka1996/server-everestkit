@@ -1,4 +1,8 @@
 // controllers/wordController.js
+const fs = require('fs');
+const path = require('path');
+const wordService = require('../services/wordService');
+
 exports.convertToWord = async (req, res) => {
     try {
       if (!req.file) {

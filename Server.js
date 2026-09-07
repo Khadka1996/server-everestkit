@@ -218,7 +218,16 @@ app.use('/api/photo-to-pdf', require('./routes/photoToPdfRoutes'));
 app.use('/api/pdf-to-jpg', require('./routes/pdfToJpgRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/client', require('./routes/clientsRoutes'));
+app.use('/api/admin/comments', require('./routes/adminCommentRoutes'));
 
+
+// === Scheduled maintenance (old chat messages + stale temp files) ===
+try {
+  const { scheduleCleanup } = require('./utils/messageCleanup');
+  scheduleCleanup();
+} catch (err) {
+  logger.error('Failed to start scheduled cleanup jobs:', err);
+}
 
 // === Health Check ===
 app.get('/health', (req, res) => {

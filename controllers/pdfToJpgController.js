@@ -1,3 +1,4 @@
+const fs = require('fs');
 const pdfConversionService = require('../services/pdfToJpgService');
 const upload = require('../config/multer.config');
 const { cleanupFiles } = require('../utils/fileUtils');
