@@ -82,6 +82,10 @@ const adRules = (partial) => {
       .optional({ values: "falsy" })
       .custom(isHttpUrl)
       .withMessage("Website link must be a full http:// or https:// URL"),
+    body("imageMobilePath")
+      .optional({ values: "falsy" })
+      .custom((v) => /^\/uploads\/ads\/[\w.-]+$/.test(v))
+      .withMessage("Invalid mobile image"),
     body("imagePath")
       .optional({ values: "falsy" })
       .custom((v) => v.startsWith("/uploads/") || isHttpUrl(v))

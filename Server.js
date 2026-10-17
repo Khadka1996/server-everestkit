@@ -166,6 +166,12 @@ if (!fs.existsSync(uploadsDir)) {
   logger.info(`Created uploads directory: ${uploadsDir}`);
 }
 
+// Ad images get unique file names, so they can be cached for a year.
+app.use('/uploads/ads', express.static(path.join(__dirname, 'uploads/ads'), {
+  maxAge: '365d',
+  immutable: true,
+}));
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   maxAge: process.env.NODE_ENV === 'production' ? '30d' : '0',
   setHeaders: (res, filePath) => {

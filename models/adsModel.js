@@ -9,12 +9,17 @@ const AD_PLACEMENTS = [
   "bottom",         // Bottom of page banner
   "sidebar_top",    // Blog article sidebar, above "Latest Articles"
   "sidebar_bottom", // Blog article sidebar, below "Latest Articles"
+  "in_article_1",   // Inside a blog article, after the 1st paragraph
+  "in_article_2",   // Inside a blog article, after the 2nd paragraph
+  "in_article_end", // Inside a blog article, after the last paragraph
+  "in_feed",        // Between sections on the home page / between blog cards
+  "article_popup",  // Blog article only: popup on open, closes itself after 5s
   "popup",          // Global: modal popup after a delay
   "sticky_footer",  // Global: sticky bar fixed to the bottom of the screen
   "global_script",  // Global: page-level script (popunder, social bar, push)
 ];
 
-const GLOBAL_PLACEMENTS = ["popup", "sticky_footer", "global_script"];
+const GLOBAL_PLACEMENTS = ["popup", "article_popup", "sticky_footer", "global_script"];
 
 // Page groups an ad can be limited to.
 const AD_PAGES = ["home", "tools", "blog", "services", "other"];
@@ -31,6 +36,7 @@ const advertisementSchema = new mongoose.Schema(
 
     // --- image ads ---
     imagePath: { type: String, trim: true },
+    imageMobilePath: { type: String, trim: true, default: "" }, // ~480px copy served to phones
     websiteLink: { type: String, trim: true },
     altText: { type: String, trim: true, maxlength: 200, default: "" },
     openInNewTab: { type: Boolean, default: true },

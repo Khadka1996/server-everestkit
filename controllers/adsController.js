@@ -8,7 +8,7 @@ const { logger } = require("../utils/logger.util");
 const { audit } = require("../utils/audit");
 
 const EDITABLE_FIELDS = [
-  "name", "type", "imagePath", "websiteLink", "altText", "openInNewTab",
+  "name", "type", "imagePath", "imageMobilePath", "websiteLink", "altText", "openInNewTab",
   "network", "code", "renderMode", "placement", "size", "pages", "devices",
   "isActive", "startDate", "endDate", "weight",
 ];
@@ -48,6 +48,9 @@ const removeUploadedImage = async (imagePath, exceptId) => {
   if (stillUsed) return;
   const file = path.join(__dirname, "..", imagePath);
   fs.promises.unlink(file).catch(() => {});
+  // ...and its phone-sized copy (name-m.webp), if one was made.
+  const mobile = file.replace(/(\.[a-z0-9]+)$/i, "-m.webp");
+  if (mobile !== file) fs.promises.unlink(mobile).catch(() => {});
 };
 
 const badId = (res) => res.status(400).json({ success: false, message: "Invalid advertisement id" });
@@ -76,11 +79,23 @@ exports.uploadImage = async (req, res) => {
       .toFile(output);
 
     const { size: finalBytes } = await fs.promises.stat(output);
+
+    // Phones show banners ~360-480px wide: give them a much lighter copy.
+    let imageMobilePath = "";
+    if (width > 600) {
+      const mobileName = `${path.parse(req.file.filename).name}-m.webp`;
+      await sharp(input, { animated })
+        .resize({ width: 480, withoutEnlargement: true })
+        .webp(animated ? { quality: 55, effort: 2, loop: 0 } : { quality: 80 })
+        .toFile(path.join(path.dirname(input), mobileName));
+      imageMobilePath = `/uploads/ads/${mobileName}`;
+    }
     if (output !== input) fs.promises.unlink(input).catch(() => {});
     const scale = width > maxWidth ? maxWidth / width : 1;
     res.status(201).json({
       success: true,
       imagePath: `/uploads/ads/${outName}`,
+      imageMobilePath,
       width: Math.round(width * scale),
       height: Math.round(height * scale),
       originalWidth: width,
@@ -166,6 +181,7 @@ exports.updateAdvertisement = async (req, res) => {
 
     const previousImage = ad.imagePath;
     ad.set(pick(req.body));
+    if (ad.imagePath !== previousImage && req.body.imageMobilePath === undefined) ad.imageMobilePath = "";
 
     // Re-check type-specific requirements against the merged document
     if (ad.type === "image" && (!ad.imagePath || !ad.websiteLink)) {
@@ -262,7 +278,7 @@ exports.getPublicAds = async (req, res) => {
             { $or: [{ endDate: null }, { endDate: { $gt: now } }] },
           ],
         })
-          .select("name type imagePath websiteLink altText openInNewTab code renderMode placement size pages devices weight endDate")
+          .select("name type imagePath imageMobilePath websiteLink altText openInNewTab code renderMode placement size pages devices weight endDate")
           .lean(),
         SiteSettings.getSingleton(),
       ]);
