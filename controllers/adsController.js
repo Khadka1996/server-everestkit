@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
+const sharp = require("sharp");
 const Advertisement = require("../models/adsModel");
 const SiteSettings = require("../models/siteSettingsModel");
 const { logger } = require("../utils/logger.util");
@@ -53,9 +54,46 @@ const badId = (res) => res.status(400).json({ success: false, message: "Invalid 
 
 // ================= Admin =================
 
-exports.uploadImage = (req, res) => {
+// Re-encode uploads as WebP (animated GIF/WebP stay animated) so a large
+// banner doesn't slow the site down. Returns the final path and dimensions so
+// the dashboard can suggest a placement.
+exports.uploadImage = async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: "No image uploaded" });
-  res.status(201).json({ success: true, imagePath: `/uploads/ads/${req.file.filename}` });
+  const input = req.file.path;
+  const originalBytes = req.file.size;
+  try {
+    const meta = await sharp(input, { animated: true }).metadata();
+    const animated = (meta.pages || 1) > 1;
+    const width = meta.width;
+    const height = meta.pageHeight || meta.height;
+    const maxWidth = animated ? 960 : 1600;
+    const outName = `${path.parse(req.file.filename).name}.webp`;
+    const output = path.join(path.dirname(input), outName);
+
+    await sharp(input, { animated })
+      .resize({ width: maxWidth, withoutEnlargement: true })
+      .webp(animated ? { quality: 60, effort: 2, loop: 0 } : { quality: 82 }) // loop: 0 = repeat forever
+      .toFile(output);
+
+    const { size: finalBytes } = await fs.promises.stat(output);
+    if (output !== input) fs.promises.unlink(input).catch(() => {});
+    const scale = width > maxWidth ? maxWidth / width : 1;
+    res.status(201).json({
+      success: true,
+      imagePath: `/uploads/ads/${outName}`,
+      width: Math.round(width * scale),
+      height: Math.round(height * scale),
+      originalWidth: width,
+      originalHeight: height,
+      animated,
+      originalBytes,
+      finalBytes,
+    });
+  } catch (error) {
+    // Unreadable by sharp (rare) — keep the original file as uploaded.
+    logger.warn(`Ad image optimisation skipped: ${error.message}`);
+    res.status(201).json({ success: true, imagePath: `/uploads/ads/${req.file.filename}`, originalBytes, finalBytes: originalBytes });
+  }
 };
 
 exports.getAllAdvertisements = async (req, res) => {

@@ -35,13 +35,13 @@ const adImageUpload = multer({
     err.status = 400;
     cb(err);
   },
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 }, // optimized to WebP after upload
 }).single("image");
 
 exports.uploadAdImage = (req, res, next) => {
   adImageUpload(req, res, (err) => {
     if (!err) return next();
-    const message = err.code === "LIMIT_FILE_SIZE" ? "Image must be 5MB or smaller" : err.message;
+    const message = err.code === "LIMIT_FILE_SIZE" ? "Image must be 20MB or smaller" : err.message;
     res.status(400).json({ success: false, message });
   });
 };
