@@ -208,6 +208,8 @@ app.post('/uploads', uploadBlogImage, handleUploadErrors, async (req, res) => {
 
 // Routes
 app.use('/api/ads', require('./routes/adsRoutes'));
+app.use('/api/settings', require('./routes/siteSettingsRoutes'));
+app.use('/api/convert', require('./routes/officeRoutes'));
 app.use('/api/blogs', require('./routes/blogRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/services', require('./routes/serviceRoutes'));
@@ -219,6 +221,7 @@ app.use('/api/pdf-to-jpg', require('./routes/pdfToJpgRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/client', require('./routes/clientsRoutes'));
 app.use('/api/admin/comments', require('./routes/adminCommentRoutes'));
+app.use('/api/admin', require('./routes/adminOverviewRoutes'));
 
 
 // === Scheduled maintenance (old chat messages + stale temp files) ===

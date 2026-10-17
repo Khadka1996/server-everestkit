@@ -20,10 +20,17 @@ const storage = multer.diskStorage({
 // File filter for images only
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (allowedTypes.includes(file.mimetype)) {
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  // Some browsers/OSes send a generic type (e.g. application/octet-stream)
+  // for .webp files, so fall back to the extension in that case.
+  const genericType = !file.mimetype || file.mimetype === 'application/octet-stream';
+  if (allowedTypes.includes(file.mimetype) || (genericType && allowedExts.includes(ext))) {
     cb(null, true);
   } else {
-    cb(new Error('Only JPG, PNG, and WEBP images are allowed'), false);
+    const err = new Error('Invalid file type. Only JPG, PNG, and WEBP images are allowed');
+    err.status = 400;
+    cb(err, false);
   }
 };
 

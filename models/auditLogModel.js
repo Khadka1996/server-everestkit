@@ -43,7 +43,13 @@ const auditLogSchema = new Schema({
       'CONTENT_REJECTED',
       'MARK_SPAM',
       'UNMARK_SPAM',
-      'BULK_DELETE_SPAM'
+      'BULK_DELETE_SPAM',
+
+      // Site settings / ads
+      'SETTINGS_UPDATED',
+      'AD_CREATED',
+      'AD_UPDATED',
+      'AD_DELETED'
     ],
     index: true
   },
@@ -55,7 +61,7 @@ const auditLogSchema = new Schema({
   targetModel: {
     type: String,
     required: true,
-    enum: ['User', 'Comment', 'Blog', 'Moderation']
+    enum: ['User', 'Comment', 'Blog', 'Moderation', 'SiteSettings', 'Advertisement']
   },
   performedBy: {
     type: Schema.Types.ObjectId,

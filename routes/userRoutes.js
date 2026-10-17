@@ -38,7 +38,8 @@ const restrictTo = (...roles) => {
 
 // Session validation middleware (for routes that need session management)
 const requireSession = (req, res, next) => {
-  const sessionId = req.headers['x-session-id'] || req.body.sessionId;
+  // authMiddleware already validated the session embedded in the auth cookie.
+  const sessionId = req.sessionId || req.headers['x-session-id'] || req.body?.sessionId;
   
   if (!sessionId) {
     return res.status(400).json({

@@ -20,7 +20,11 @@ const cleanupTempFiles = async () => {
       path.join(__dirname, '../temp/processing'),
       path.join(__dirname, '../temp/uploads'),
       path.join(__dirname, '../temp/jpg_output'),
-      path.join(__dirname, '../temp/converted')
+      path.join(__dirname, '../temp/converted'),
+      path.join(__dirname, '../temp/office'),
+      // multer.config.js / photo.multer.config.js write here (outside Server/)
+      path.join(__dirname, '../../temp/uploads'),
+      path.join(__dirname, '../../temp/uploads/images')
     ];
 
     const cutoffTime = Date.now() - (24 * 60 * 60 * 1000); // 24 hours

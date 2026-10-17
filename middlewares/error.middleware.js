@@ -10,11 +10,22 @@ const errorHandler = (err, req, res, next) => {
     });
   }
   
+  if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      success: false,
+      message: 'Too many files uploaded at once'
+    });
+  }
+
   if (err.message.includes('Invalid file type')) {
     return res.status(400).json({
       success: false,
-      message: 'Only PDF files are allowed'
+      message: err.message.replace(/^Invalid file type\.\s*/, '') || 'Invalid file type'
     });
+  }
+
+  if (err.status && err.status < 500) {
+    return res.status(err.status).json({ success: false, message: err.message });
   }
 
   res.status(500).json({
