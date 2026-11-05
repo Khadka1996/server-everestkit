@@ -19,7 +19,65 @@ def to_word(src, dst, opts):
         cv.convert(dst, start=0, end=None)
     finally:
         cv.close()
-    return {}
+    return _shrink_docx_images(dst)
+
+
+def _shrink_docx_images(path, max_side=2000, min_bytes=150_000):
+    """pdf2docx stores photos as lossless PNG, so a 2MB PDF can become a 20MB
+    .docx. Re-encode large opaque images as JPEG (and cap their size)."""
+    import io
+    import os
+    import zipfile
+
+    from PIL import Image
+
+    with zipfile.ZipFile(path) as zin:
+        entries = [(i, zin.read(i.filename)) for i in zin.infolist()]
+
+    renamed = {}
+    out = []
+    for info, data in entries:
+        name = info.filename
+        if name.startswith("word/media/") and name.lower().endswith(".png") and len(data) > min_bytes:
+            try:
+                img = Image.open(io.BytesIO(data))
+                has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
+                if has_alpha and img.convert("RGBA").getextrema()[3][0] < 255:
+                    raise ValueError("transparent")  # keep real transparency as PNG
+                img = img.convert("RGB")
+                img.thumbnail((max_side, max_side))
+                buf = io.BytesIO()
+                img.save(buf, "JPEG", quality=85, optimize=True, progressive=True)
+                if buf.tell() < len(data):
+                    new_name = name[:-4] + ".jpeg"
+                    renamed[name.split("/")[-1]] = new_name.split("/")[-1]
+                    out.append((new_name, buf.getvalue()))
+                    continue
+            except Exception:
+                pass
+        out.append((name, data))
+
+    if renamed:
+        fixed = []
+        for name, data in out:
+            if name.endswith(".rels"):
+                text = data.decode("utf-8")
+                for old, new in renamed.items():
+                    text = text.replace(f"media/{old}", f"media/{new}")
+                data = text.encode("utf-8")
+            elif name == "[Content_Types].xml":
+                text = data.decode("utf-8")
+                if 'Extension="jpeg"' not in text:
+                    text = text.replace("<Types ", "<Types ", 1).replace(
+                        "</Types>", '<Default Extension="jpeg" ContentType="image/jpeg"/></Types>', 1)
+                data = text.encode("utf-8")
+            fixed.append((name, data))
+        tmp = path + ".tmp"
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+            for name, data in fixed:
+                zout.writestr(name, data)
+        os.replace(tmp, path)
+    return {"imagesRecompressed": len(renamed)}
 
 
 def to_excel(src, dst, opts):
