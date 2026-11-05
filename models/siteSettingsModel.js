@@ -28,6 +28,7 @@ const siteSettingsSchema = new mongoose.Schema(
       hideForAdmins: { type: Boolean, default: true },      // don't count/show ads to logged-in admins
       showAdLabel: { type: Boolean, default: true },        // small "Advertisement" label above ads
       adsenseFallback: { type: Boolean, default: true },    // show AdSense in a slot when no custom ad exists
+      scriptAdsOnly: { type: Boolean, default: false },     // only network script (code) ads run; image ads are held back
       popupDelaySeconds: { type: Number, min: 0, max: 600, default: 8 },
       popupFrequencyHours: { type: Number, min: 0, max: 720, default: 24 }, // 0 = every page load
       stickyDismissible: { type: Boolean, default: true },

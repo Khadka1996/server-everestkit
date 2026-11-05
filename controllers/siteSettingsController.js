@@ -4,7 +4,7 @@ const { audit } = require("../utils/audit");
 const { logger } = require("../utils/logger.util");
 
 const CODE_KEYS = ["head", "bodyStart", "sidebar", "footer", "customCss", "customJs"];
-const AD_BOOL_KEYS = ["enabled", "showOnMobile", "hideForAdmins", "showAdLabel", "adsenseFallback", "stickyDismissible"];
+const AD_BOOL_KEYS = ["enabled", "showOnMobile", "hideForAdmins", "showAdLabel", "adsenseFallback", "stickyDismissible", "scriptAdsOnly"];
 const MAX_CODE = 50000;
 
 let publicCache = { data: null, expires: 0 };

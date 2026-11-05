@@ -270,9 +270,12 @@ exports.getPublicAds = async (req, res) => {
   try {
     if (!publicCache.data || publicCache.expires < Date.now()) {
       const now = new Date();
-      const [ads, settings] = await Promise.all([
+      const settings = await SiteSettings.getSingleton();
+      const scriptOnly = settings.ads?.scriptAdsOnly === true;
+      const [ads] = await Promise.all([
         Advertisement.find({
           isActive: true,
+          ...(scriptOnly ? { type: "code" } : {}),
           $and: [
             { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
             { $or: [{ endDate: null }, { endDate: { $gt: now } }] },
@@ -280,7 +283,6 @@ exports.getPublicAds = async (req, res) => {
         })
           .select("name type imagePath imageMobilePath websiteLink altText openInNewTab code renderMode placement size pages devices weight endDate")
           .lean(),
-        SiteSettings.getSingleton(),
       ]);
 
       const s = settings.ads || {};
@@ -297,6 +299,7 @@ exports.getPublicAds = async (req, res) => {
             popupFrequencyHours: s.popupFrequencyHours ?? 24,
             stickyDismissible: s.stickyDismissible !== false,
             excludedPaths: s.excludedPaths || [],
+            scriptAdsOnly: scriptOnly,
           },
           // An ad whose end date passes inside the cache window must not keep showing.
           ads: ads.map(({ endDate, ...ad }) => ({ ...ad, _expires: endDate ? new Date(endDate).getTime() : null })),
