@@ -131,16 +131,23 @@ exports.getAllAdvertisements = async (req, res) => {
 
 exports.getStats = async (req, res) => {
   try {
-    const ads = await Advertisement.find({}, "isActive startDate endDate impressions clicks placement").lean();
+    const [ads, settings] = await Promise.all([
+      Advertisement.find({}, "type isActive startDate endDate impressions clicks placement").lean(),
+      SiteSettings.getSingleton(),
+    ]);
+    const scriptOnly = settings.ads?.scriptAdsOnly === true;
     const now = new Date();
     const totals = ads.reduce(
       (acc, ad) => {
         acc.impressions += ad.impressions || 0;
         acc.clicks += ad.clicks || 0;
-        acc[statusOf(ad, now)] += 1;
+        const status = statusOf(ad, now);
+        // Image ads held back by "Script ads only" aren't on the site.
+        if (status === "live" && scriptOnly && ad.type === "image") acc.hidden += 1;
+        else acc[status] += 1;
         return acc;
       },
-      { total: ads.length, live: 0, paused: 0, scheduled: 0, expired: 0, impressions: 0, clicks: 0 }
+      { total: ads.length, live: 0, hidden: 0, paused: 0, scheduled: 0, expired: 0, impressions: 0, clicks: 0 }
     );
     totals.ctr = totals.impressions ? Number(((totals.clicks / totals.impressions) * 100).toFixed(2)) : 0;
     res.status(200).json({ success: true, stats: totals });
